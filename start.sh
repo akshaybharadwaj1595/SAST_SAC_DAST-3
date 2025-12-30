@@ -4,6 +4,9 @@
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
+#!/bin/bash
+java -jar TestProject.war
+
 # Run the TestProject WAR file
 echo "Starting TestProject on port 8080..."
 java -Xmx256m \
