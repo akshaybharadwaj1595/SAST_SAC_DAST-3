@@ -5,49 +5,36 @@ pipeline {
         maven 'Maven_3_8_7'
     }
 
-    environment {
-        DOCKER_IMAGE = "catheren/testproject"
-    }
-
     stages {
 
-        stage('Sonar Analysis') {
+        stage('Build') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'SONAR_TOKEN_3', variable: 'SONAR_TOKEN')]) {
-                        bat """
-                        mvn clean verify ^
-                        org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar ^
-                        -Dsonar.login=%SONAR_TOKEN% ^
-                        -Dsonar.projectKey=TestProject ^
-                        -Dsonar.host.url=http://localhost:9000 ^
-                        -Dmaven.test.failure.ignore=true
-                        """
-                    }
+                bat 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withCredentials([string(credentialsId: 'SONAR_TOKEN_3', variable: 'SONAR_TOKEN')]) {
+                    bat "mvn -B verify sonar:sonar -Dsonar.login=%SONAR_TOKEN% -Dsonar.projectKey=TestProject -Dsonar.host.url=http://localhost:9000/"
                 }
             }
         }
 
-        // Quality Gate stage removed
-
         stage('Docker Build') {
             steps {
-                withDockerRegistry([credentialsId: 'dockerlogin', url: '']) {
-                    script {
-                        docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
-                    }
-                }
+                bat 'docker build -t catheren/testproject:latest .'
             }
         }
 
         stage('Security Scans') {
+
             stages {
-                stage('Snyk Container Scan') {
+
+                stage('Snyk Container') {
                     steps {
                         withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-                            bat """
-                            C:\\Users\\jcath\\Downloads\\Snyk\\snyk-win.exe container test ${DOCKER_IMAGE}:${BUILD_NUMBER} || exit /b 0
-                            """
+                            bat '"C:\\snyk\\snyk-win.exe" container test catheren/testproject || exit /b 0'
                         }
                     }
                 }
@@ -63,23 +50,16 @@ pipeline {
                 stage('ZAP DAST') {
                     steps {
                         bat 'if not exist "%WORKSPACE%\\ZAP_Reports" mkdir "%WORKSPACE%\\ZAP_Reports"'
-                        bat """
-                        cd /d "C:\\Users\\jcath\\Downloads\\Snyk\\ZAP_2.15.0_Crossplatform\\ZAP_2.15.0" ^
-                        && zap.bat -cmd ^
-                        -quickurl http://3.85.51.191:8080/ ^
-                        -quickout "%WORKSPACE%\\ZAP_Reports\\ZAP_Output.html"
-                        """
+                        bat 'cd /d "C:\\ZAP\\ZAP_2.16.0_Crossplatform\\ZAP_2.16.0" && zap.bat -cmd -quickurl https://www.example.com -quickout "%WORKSPACE%\\ZAP_Reports\\ZAP_Output.html"'
                     }
                 }
 
                 stage('Checkov') {
                     steps {
-                        bat """
-                        "C:\\Users\\jcath\\AppData\\Roaming\\Python\\Python313\\Scripts\\checkov.exe" ^
-                        -s -f main.tf || exit /b 0
-                        """
+                        bat '"C:\\Users\\Akshay Bharadwaj\\AppData\\Roaming\\Python\\Python313\\Scripts\\checkov.exe" -s -f main.tf || exit /b 0'
                     }
                 }
+
             }
         }
     }
@@ -87,12 +67,6 @@ pipeline {
     post {
         always {
             archiveArtifacts artifacts: 'ZAP_Reports/ZAP_Output.html', allowEmptyArchive: true
-        }
-        failure {
-            echo '❌ Pipeline failed. Check logs for details.'
-        }
-        success {
-            echo '✅ Pipeline completed successfully.'
         }
     }
 }
