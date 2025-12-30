@@ -3,10 +3,11 @@ pipeline {
 
     environment {
         SONAR_HOST_URL = 'http://localhost:9000'
-        SONAR_LOGIN = 'your_sonar_token'
+        SONAR_LOGIN = credentials('SONAR_TOKEN_3') // Jenkins credential
     }
 
     stages {
+
         stage('Build') {
             steps {
                 bat 'mvn clean package'
@@ -21,6 +22,7 @@ pipeline {
 
         stage('Security Scans') {
             stages {
+
                 stage('Snyk Container') {
                     steps {
                         bat '"C:\\snyk\\snyk-win.exe" container test asecurityguru/testeb || exit /b 0'
