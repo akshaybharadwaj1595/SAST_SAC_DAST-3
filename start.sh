@@ -4,10 +4,7 @@
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
-#!/bin/bash
-java -jar TestProject.war
-
-# Run the TestProject WAR file
+# Run the TestProject WAR file with JVM options
 echo "Starting TestProject on port 8080..."
 java -Xmx256m \
      -XX:MaxMetaspaceSize=128m \
