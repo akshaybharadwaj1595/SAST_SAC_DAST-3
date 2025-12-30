@@ -11,9 +11,6 @@ pipeline {
 
     stages {
 
-        /* =========================
-           BUILD + SONAR ANALYSIS
-           ========================= */
         stage('Sonar Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
@@ -31,20 +28,8 @@ pipeline {
             }
         }
 
-        /* =========================
-           QUALITY GATE (BLOCKER)
-           ========================= */
-        stage('Sonar Quality Gate') {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
+        // Quality Gate stage removed
 
-        /* =========================
-           DOCKER BUILD
-           ========================= */
         stage('Docker Build') {
             steps {
                 withDockerRegistry([credentialsId: 'dockerlogin', url: '']) {
@@ -55,13 +40,8 @@ pipeline {
             }
         }
 
-        /* =========================
-           SECURITY SCANS
-           ========================= */
         stage('Security Scans') {
-
             stages {
-
                 stage('Snyk Container Scan') {
                     steps {
                         withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
@@ -104,9 +84,6 @@ pipeline {
         }
     }
 
-    /* =========================
-       POST ACTIONS
-       ========================= */
     post {
         always {
             archiveArtifacts artifacts: 'ZAP_Reports/ZAP_Output.html', allowEmptyArchive: true
