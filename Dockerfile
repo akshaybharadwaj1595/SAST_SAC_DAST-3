@@ -7,21 +7,21 @@ FROM maven:3.8-jdk-8 AS builder
 COPY . /usr/src/TestProject/
 WORKDIR /usr/src/TestProject/
 
-# Build project and produce jar
+# Build project and produce jar (skip tests for faster build)
 RUN mvn -B package -DskipTests
 
 # -------------------------
 # Run stage
 # -------------------------
-FROM openjdk:8-jdk
+FROM openjdk:8-jre
 
 # Create logs directory
 RUN mkdir -p /logs
 
-# Copy built jar from builder stage
+# Copy the built jar from builder stage
 COPY --from=builder /usr/src/TestProject/target/TestProject.jar /
 
-# Run command with all JVM options
+# Command to run the application with JVM options
 CMD ["java", \
      "-XX:MaxMetaspaceSize=128m", \
      "-Xloggc:/logs/gc_%p_%t.log", \
