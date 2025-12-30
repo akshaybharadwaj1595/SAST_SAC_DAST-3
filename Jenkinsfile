@@ -5,32 +5,59 @@ pipeline {
         maven 'Maven_3_8_7'
     }
 
+    environment {
+        DOCKER_IMAGE = "catheren/testproject"
+    }
+
     stages {
 
-        stage('Build') {
+        /* =========================
+           BUILD + SONAR ANALYSIS
+           ========================= */
+        stage('Sonar Analysis') {
             steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN_3', variable: 'SONAR_TOKEN')]) {
-                    bat """
-                    mvn clean verify sonar:sonar ^
-                    -Dsonar.login=%SONAR_TOKEN% ^
-                    -Dsonar.projectKey=TestProject ^
-                    -Dsonar.host.url=http://localhost:9000 ^
-                    -Dmaven.test.failure.ignore=true
-                    """
-                }
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                withDockerRegistry([credentialsId: "dockerlogin", url: ""]) {
-                    script {
-                        docker.build("catheren/testproject")
+                withSonarQubeEnv('SonarQube') {
+                    withCredentials([string(credentialsId: 'SONAR_TOKEN_3', variable: 'SONAR_TOKEN')]) {
+                        bat """
+                        mvn clean verify ^
+                        org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar ^
+                        -Dsonar.login=%SONAR_TOKEN% ^
+                        -Dsonar.projectKey=TestProject ^
+                        -Dsonar.host.url=http://localhost:9000 ^
+                        -Dmaven.test.failure.ignore=true
+                        """
                     }
                 }
             }
         }
 
+        /* =========================
+           QUALITY GATE (BLOCKER)
+           ========================= */
+        stage('Sonar Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        /* =========================
+           DOCKER BUILD
+           ========================= */
+        stage('Docker Build') {
+            steps {
+                withDockerRegistry([credentialsId: 'dockerlogin', url: '']) {
+                    script {
+                        docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
+                    }
+                }
+            }
+        }
+
+        /* =========================
+           SECURITY SCANS
+           ========================= */
         stage('Security Scans') {
 
             stages {
@@ -39,7 +66,7 @@ pipeline {
                     steps {
                         withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
                             bat """
-                            C:\\Users\\jcath\\Downloads\\Snyk\\snyk-win.exe container test catheren/testproject || exit /b 0
+                            C:\\Users\\jcath\\Downloads\\Snyk\\snyk-win.exe container test ${DOCKER_IMAGE}:${BUILD_NUMBER} || exit /b 0
                             """
                         }
                     }
@@ -77,9 +104,18 @@ pipeline {
         }
     }
 
+    /* =========================
+       POST ACTIONS
+       ========================= */
     post {
         always {
             archiveArtifacts artifacts: 'ZAP_Reports/ZAP_Output.html', allowEmptyArchive: true
+        }
+        failure {
+            echo '❌ Pipeline failed. Check logs for details.'
+        }
+        success {
+            echo '✅ Pipeline completed successfully.'
         }
     }
 }
