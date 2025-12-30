@@ -1,33 +1,19 @@
-#!/bin/sh
-mkdir -p /logs
+#!/bin/bash
+# Start script for TestProject
 
-exec java \
-  -XX:MaxMetaspaceSize=128m \
-  -Xloggc:/logs/gc_%p_%t.log \
-  -Xmx256m \
-  -XX:MaxDirectMemorySize=90m \
-  -XX:+UseSerialGC \
-  -XX:+PrintHeapAtGC \
-  -XX:+PrintGCDetails \
-  -XX:+PrintGCDateStamps \
-  -XX:+UseGCLogFileRotation \
-  -XX:NumberOfGCLogFiles=5 \
-  -XX:GCLogFileSize=10M \
-  -XX:GCTimeLimit=15 \
-  -XX:GCHeapFreeLimit=50 \
-  -XX:+HeapDumpOnOutOfMemoryError \
-  -XX:HeapDumpPath=/logs/ \
-  -XX:ErrorFile=/logs/hs_err_pid%p.log \
-  -agentlib:jdwp=transport=dt_socket,server=y,address=9009,suspend=n \
-  -Dderby.stream.error.file=/logs/derby.log \
-  -Dderby.infolog.append=true \
-  -Dderby.language.logStatementText=true \
-  -Dderby.locks.deadlockTrace=true \
-  -Dderby.locks.monitor=true \
-  -Dderby.storage.rowLocking=true \
-  -Dcom.sun.management.jmxremote \
-  -Dcom.sun.management.jmxremote.port=7900 \
-  -Dcom.sun.management.jmxremote.ssl=false \
-  -Dcom.sun.management.jmxremote.authenticate=false \
-  -ea \
-  -jar /easybuggy.jar
+# Create logs directory if it doesn't exist
+mkdir -p logs
+
+# Run the TestProject WAR file
+echo "Starting TestProject on port 8080..."
+java -Xmx256m \
+     -XX:MaxMetaspaceSize=128m \
+     -XX:+UseSerialGC \
+     -XX:+PrintGCDetails \
+     -XX:+PrintHeapAtGC \
+     -XX:+PrintGCDateStamps \
+     -jar TestProject.war \
+     --server.port=8080 \
+     >> logs/application.log 2>&1 &
+
+echo "TestProject started. Logs are in logs/application.log"
