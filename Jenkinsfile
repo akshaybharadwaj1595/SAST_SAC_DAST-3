@@ -7,6 +7,14 @@ pipeline {
 
     stages {
 
+        stage('Checkout') {
+            steps {
+                // Ensure latest code with clean workspace
+                cleanWs()
+                checkout scm
+            }
+        }
+
         stage('Build') {
             steps {
                 bat 'mvn clean package -DskipTests'
@@ -49,7 +57,10 @@ pipeline {
 
                 stage('ZAP DAST') {
                     steps {
+                        // Create report directory
                         bat 'if not exist "%WORKSPACE%\\ZAP_Reports" mkdir "%WORKSPACE%\\ZAP_Reports"'
+
+                        // Run ZAP scan
                         bat 'cd /d "C:\\ZAP\\ZAP_2.16.0_Crossplatform\\ZAP_2.16.0" && zap.bat -cmd -quickurl https://www.example.com -quickout "%WORKSPACE%\\ZAP_Reports\\ZAP_Output.html"'
                     }
                 }
