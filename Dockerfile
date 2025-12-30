@@ -1,9 +1,9 @@
 # -------------------------
 # Build stage
 # -------------------------
-FROM maven:3.6.3-jdk-8 AS builder
+FROM maven:3.8-jdk-8 AS builder
 
-# Copy project source to container
+# Copy project source code
 COPY . /usr/src/TestProject/
 WORKDIR /usr/src/TestProject/
 
@@ -18,10 +18,10 @@ FROM openjdk:8-jdk
 # Create logs directory
 RUN mkdir -p /logs
 
-# Copy application jar from build stage
+# Copy built jar from builder stage
 COPY --from=builder /usr/src/TestProject/target/TestProject.jar /
 
-# Run command with JVM options
+# Run command with all JVM options
 CMD ["java", \
      "-XX:MaxMetaspaceSize=128m", \
      "-Xloggc:/logs/gc_%p_%t.log", \
@@ -33,6 +33,8 @@ CMD ["java", \
      "-XX:+UseGCLogFileRotation", \
      "-XX:NumberOfGCLogFiles=5", \
      "-XX:GCLogFileSize=10M", \
+     "-XX:GCTimeLimit=15", \
+     "-XX:GCHeapFreeLimit=50", \
      "-XX:+HeapDumpOnOutOfMemoryError", \
      "-XX:HeapDumpPath=/logs/", \
      "-XX:ErrorFile=/logs/hs_err_pid%p.log", \
